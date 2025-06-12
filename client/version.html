@@ -1,0 +1,28 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/BrowserFS/2.0.0/browserfs.js"></script>
+    <script src="wasm_exec.js"></script>
+    <script>
+        if (!WebAssembly.instantiateStreaming) { // polyfill
+            WebAssembly.instantiateStreaming = async (resp, importObject) => {
+                const source = await (await resp).arrayBuffer()
+                return await WebAssembly.instantiate(source, importObject)
+            }
+        }
+        const go = new Go();
+        go.argv = ['pdfcpu.wasm', 'version'];
+
+        WebAssembly.instantiateStreaming(fetch("pdfcpu.wasm"), go.importObject)
+            .then((result) => {
+                go.run(result.instance);
+
+            });
+    </script>
+</head>
+<body>
+
+</body>
+</html>

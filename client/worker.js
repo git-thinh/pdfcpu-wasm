@@ -5,7 +5,7 @@ importScripts("https://cdnjs.cloudflare.com/ajax/libs/bluebird/3.5.4/bluebird.mi
 class GoWorker {
     constructor() {
         this.fs = Promise.promisifyAll(BrowserFS.BFSRequire('fs'));
-        console.log("GoWorker constructed");
+        console.log("[W] GoWorker constructed");
     }
 
     async validate(buffer) {
@@ -14,9 +14,13 @@ class GoWorker {
             this.go.argv = ['pdfcpu.wasm', 'validate', '/test.pdf'];
             var st = Date.now();
             await this.go.run(this.instance);
-            console.log('Time taken:', Date.now() - st);
 
-            return this.go.exitCode === 0;
+            console.log('[W].validate: Time taken:', Date.now() - st);
+            //return this.go.exitCode === 0;
+
+            let a = this.fs.messages || [];
+            console.log('[W].validate: messages =', a);
+            return a[a.length - 1] == 'validation ok';
         } catch (e) {
             console.error(e);
 
@@ -30,15 +34,18 @@ class GoWorker {
         this.go.argv = ['pdfcpu.wasm', 'trim', '-pages', String(page), '/test.pdf', '/first_page.pdf'];
         var st = Date.now();
         await this.go.run(this.instance);
-        console.log('Time taken:', Date.now() - st);
+        console.log('[W].extractPage: Time taken:', Date.now() - st);
 
         let contents = await this.fs.readFileAsync('/first_page.pdf');
-        console.log("after run main:", contents);
+        console.log("[W].extractPage: after run main contents =", contents.length);
+
+        let a = this.fs.messages || [];
+        console.log('[W].extractPage: messages =', a);
 
         this.fs.unlink('/test.pdf', err => {
-            console.log("Removed test.pdf", err);
+            console.log("[W].extractPage: Removed test.pdf", err);
             this.fs.unlink('/first_page.pdf', err2 => {
-                console.log("Removed first_page.pdf", err);
+                console.log("[W].extractPage: Removed first_page.pdf", err);
             })
         })
 
@@ -59,13 +66,14 @@ class GoWorker {
             this.instance = await WebAssembly.instantiate(this.compiledModule, this.go.importObject);
         }
 
+        this.fs.messages = [];
         await this.fs.writeFileAsync('/test.pdf', Buffer.from(buffer));
         let contents = await this.fs.readFileAsync('/test.pdf');
-        console.log(contents);
+        //console.log(contents);
     }
 }
 
-console.log("pre config");
+console.log("[W] pre config");
 // Configures BrowserFS to use the InMemory file system.
 BrowserFS.configure({
     fs: "InMemory"
@@ -75,7 +83,7 @@ BrowserFS.configure({
         throw e;
     }
     importScripts('./wasm_exec.js');
-    console.log("browserfs initialized!")
+    console.log("[W] browserfs initialized!")
     Comlink.expose(GoWorker, self);
 });
 
